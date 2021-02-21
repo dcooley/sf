@@ -4,7 +4,8 @@
 
 int get_m_position(Rcpp::NumericVector& pt) {
 	if( pt.size() < 3 ) {
-		Rcpp::stop("m error - expecting at least three coordinates");
+		return -1;
+		//Rcpp::stop("m error - expecting at least three coordinates");
 	}
 	int pos = pt.size() == 3 ? 2 : 3;
 	return pos;
@@ -12,7 +13,8 @@ int get_m_position(Rcpp::NumericVector& pt) {
 
 int get_m_position(Rcpp::NumericMatrix& nm) {
 	if( nm.ncol() < 3 ) {
-		Rcpp::stop("m error - expecting at least three columns");
+		return -1;
+		//Rcpp::stop("m error - expecting at least three columns");
 	}
 	int pos = nm.ncol() == 3 ? 2 : 3;
 	return pos;
@@ -20,14 +22,16 @@ int get_m_position(Rcpp::NumericMatrix& nm) {
 
 int get_z_position(Rcpp::NumericVector& pt) {
 	if( pt.size() < 3 ) {
-		Rcpp::stop("z error - expecting three coordinates");
+		return -1;
+		//Rcpp::stop("z error - expecting three coordinates");
 	}
 	return 2;
 }
 
 int get_z_position(Rcpp::NumericMatrix& nm) {
 	if( nm.ncol() < 3 ) {
-		Rcpp::stop("z error - expecting three columns;");
+		return -1;
+		//Rcpp::stop("z error - expecting three columns;");
 	}
 	return 2;
 }
@@ -44,7 +48,9 @@ Rcpp::NumericVector CPL_get_z_range(Rcpp::List sf, int depth) {
 		for (decltype(n) i = 0; i < n; i++) {
 			Rcpp::NumericVector pt = sf[i];
 			int pos = get_z_position(pt);
-			if (i == 0) {
+			if ( pos == -1 ) {
+				// allow to pass through,
+			} else if (i == 0) {
 				bb[0] = pt[pos];
 				bb[1] = pt[pos];
 			} else {
@@ -54,24 +60,26 @@ Rcpp::NumericVector CPL_get_z_range(Rcpp::List sf, int depth) {
 		}
 		break;
 
-	case 1: { // list of matrices:
-			bool initialised = false;
-			for (decltype(n) i = 0; i < n; i++) {
-				Rcpp::NumericMatrix m = sf[i];
-				int pos = get_z_position(m);
-				auto rows = m.nrow();
-	
-				if (rows > 0) {
-					if (! initialised) { // initialize:
-						bb[0] = m(0,pos);
-						bb[1] = m(0,pos);
-						initialised = true;
-					}
-					for (decltype(rows) j = 0; j < rows; j++) {
-						bb[0] = std::min(m(j,pos),bb[0]);
-						bb[1] = std::max(m(j,pos),bb[1]);
-					}
-				}
+	case 1: // list of matrices:
+		for (decltype(n) i = 0; i < n; i++) {
+			Rcpp::NumericMatrix m = sf[i];
+			int pos = get_z_position(m);
+			auto rows = m.nrow();
+
+			if (pos == -1 ) {
+				continue;
+			}
+
+			if (i == 0) { // initialize:
+				if (rows == 0)
+					return bb; // #nocov
+				// Rcpp::stop("CPL_get_zbox: invalid geometry");
+				bb[0] = m(0,pos);
+				bb[1] = m(0,pos);
+			}
+			for (decltype(rows) j = 0; j < rows; j++) {
+				bb[0] = std::min(m(j,pos),bb[0]);
+				bb[1] = std::max(m(j,pos),bb[1]);
 			}
 		}
 		break;
@@ -106,7 +114,9 @@ Rcpp::NumericVector CPL_get_m_range(Rcpp::List sf, int depth) {
 		for (decltype(n) i = 0; i < n; i++) {
 			Rcpp::NumericVector pt = sf[i];
 			int pos = get_m_position(pt);
-			if (i == 0) {
+			if (pos == -1 ) {
+				// allow to pass
+			} else if (i == 0) {
 				bb[0] = pt[pos];
 				bb[1] = pt[pos];
 			} else {
@@ -116,24 +126,26 @@ Rcpp::NumericVector CPL_get_m_range(Rcpp::List sf, int depth) {
 		}
 		break;
 
-	case 1: { // list of matrices:
-			bool initialised = false;
-			for (decltype(n) i = 0; i < n; i++) {
-				Rcpp::NumericMatrix m = sf[i];
-				int pos = get_m_position(m);
-				auto rows = m.nrow();
-	
-				if (rows > 0) {
-					if (! initialised) { // initialize:
-						bb[0] = m(0,pos);
-						bb[1] = m(0,pos);
-						initialised = true;
-					}
-					for (decltype(rows) j = 0; j < rows; j++) {
-						bb[0] = std::min(m(j,pos),bb[0]);
-						bb[1] = std::max(m(j,pos),bb[1]);
-					}
-				}
+	case 1: // list of matrices:
+		for (decltype(n) i = 0; i < n; i++) {
+			Rcpp::NumericMatrix m = sf[i];
+			int pos = get_m_position(m);
+			auto rows = m.nrow();
+
+			if (pos == -1 ) {
+				continue;
+			}
+
+			if (i == 0) { // initialize:
+				if (rows == 0)
+					return bb; // #nocov
+				// Rcpp::stop("CPL_get_zbox: invalid geometry");
+				bb[0] = m(0,pos);
+				bb[1] = m(0,pos);
+			}
+			for (decltype(rows) j = 0; j < rows; j++) {
+				bb[0] = std::min(m(j,pos),bb[0]);
+				bb[1] = std::max(m(j,pos),bb[1]);
 			}
 		}
 		break;
@@ -155,4 +167,3 @@ Rcpp::NumericVector CPL_get_m_range(Rcpp::List sf, int depth) {
 	}
 	return bb;
 }
-
